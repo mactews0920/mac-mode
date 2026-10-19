@@ -67,9 +67,27 @@ else{const s=new Date(e.date+'T00:00'),n=new Date(s);n.setDate(n.getDate()+1);L.
 L.push('SUMMARY:'+icsEsc(e.title));if(e.loc)L.push('LOCATION:'+icsEsc(e.loc));L.push('DESCRIPTION:'+icsEsc(e.tag+' event · added from Mac Mode'),'CATEGORIES:'+icsEsc(e.tag));
 L.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+icsEsc(e.title),e.time?'TRIGGER:-PT30M':'TRIGGER:PT9H','END:VALARM','END:VEVENT','END:VCALENDAR');
 return L.map(icsFold).join('\r\n')+'\r\n'}
-function openICS(e){const ics=buildICS(e),ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform=='MacIntel'&&navigator.maxTouchPoints>1);
-if(ios){const du='data:text/calendar;charset=utf-8,'+encodeURIComponent(ics);window.__lastICS=du;location.href=du;return}
-const u=URL.createObjectURL(new Blob([ics],{type:'text/calendar;charset=utf-8'})),l=document.createElement('a');l.href=u;l.download=(e.title||'event').replace(/[^\w\- ]+/g,'').replace(/\s+/g,' ').trim().slice(0,40)+'.ics';document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
+const isIOS=()=>/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform=='MacIntel'&&navigator.maxTouchPoints>1);
+const isStandalone=()=>navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
+const icsName=e=>((e.title||'event').replace(/[^\w\- ]+/g,'').replace(/\s+/g,' ').trim().slice(0,40)||'event')+'.ics';
+const gcalURL=e=>{let d;if(e.time){const s=new Date(e.date+'T'+e.time),en=new Date(s.getTime()+36e5);d=icsDT(s)+'/'+icsDT(en)}else{const s=new Date(e.date+'T00:00'),n=new Date(s);n.setDate(n.getDate()+1);d=icsD(s)+'/'+icsD(n)}
+return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(e.title||'')+'&dates='+d+'&details='+encodeURIComponent(e.tag+' event · added from Mac Mode')+(e.loc?'&location='+encodeURIComponent(e.loc):'')+(e.time?'&ctz='+encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone||''):'')};
+let calEv=null;
+function openICS(e){calEv=e;const sa=isIOS()&&isStandalone(),f=new File([buildICS(e)],icsName(e),{type:'text/calendar'}),canShare=!!(navigator.canShare&&navigator.canShare({files:[f]}));
+const m=document.createElement('div');m.className='sheet-bg';m.innerHTML=`<div class="sheet" role="dialog" aria-label="Add to Calendar"><div class="grab"></div><div class="sh-t">${ic('calplus')}<div><b>${esc(e.title)}</b><div class="sub">${fmtD(e.date)}${e.time?' · '+fmtT(e.time):' · All day'}</div></div></div>
+${sa?'':`<button class="btn" data-c="apple">${ic('cal')}Add to Apple Calendar</button>`}
+${canShare?`<button class="btn ${sa?'':'alt'}" data-c="share">${ic('up')}${sa?'Add to Calendar (Share)':'Share event file'}</button>`:''}
+<a class="btn alt" data-c="g" href="${gcalURL(e)}" target="_blank" rel="noopener">${ic('cal')}Add to Google Calendar</a>
+${sa?`<div class="hint">${canShare?'In the share sheet, tap <b>Calendar</b> if shown, or <b>Save to Files</b> and then open the file to add it. ':''}For one-tap adding, open Mac Mode in <b>Safari</b> (not the home-screen icon) and tap Add to Apple Calendar.</div>`:''}
+${!isIOS()?`<button class="btn alt" data-c="dl">${ic('down')}Download .ics file</button>`:''}
+<button class="btn ghost" data-c="x">Cancel</button></div>`;
+const close=()=>{m.classList.add('out');setTimeout(()=>m.remove(),220)};
+m.onclick=async ev=>{if(ev.target===m)return close();const c=ev.target.closest('[data-c]')?.dataset.c;if(!c)return;
+if(c=='x')return close();if(c=='g'){setTimeout(close,300);return}
+if(c=='apple'){const u=URL.createObjectURL(new Blob([buildICS(e)],{type:'text/calendar;charset=utf-8'}));location.href=u;setTimeout(()=>URL.revokeObjectURL(u),60000);close();return}
+if(c=='share'){try{await navigator.share({files:[f],title:e.title})}catch(x){if(x&&x.name!='AbortError')alert('Sharing failed. Try Google Calendar, or open Mac Mode in Safari.')}close();return}
+if(c=='dl'){const u=URL.createObjectURL(new Blob([buildICS(e)],{type:'text/calendar;charset=utf-8'})),l=document.createElement('a');l.href=u;l.download=icsName(e);document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);close()}};
+document.body.appendChild(m)}
 const titles={stocks:'Stocks',more:'More',home:'Today',todos:'To-dos',events:'Events',notes:'Notes',remind:'Reminders',motiv:'Motivate'};
 function render(){const v=$('#view');v.innerHTML=V[tab]();v.classList.remove('fade');void v.offsetWidth;v.classList.add('fade');$('#title').textContent=tab=='home'?new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}):titles[tab];const nt=(tab=='notes'||tab=='remind')?'more':tab;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==nt))}
 document.querySelector('nav').onclick=e=>{const b=e.target.closest('button');if(b){tab=b.dataset.t;filt='All';render();scrollTo(0,0);if(tab=='stocks'&&Date.now()-qAt>30000)loadQuotes()}};
