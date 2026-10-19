@@ -55,3 +55,4 @@ nav .i{width:22px;height:22px;transition:transform .3s var(--ease)}nav .on{color
 .px{text-align:right}.pv{font-weight:600;font-variant-numeric:tabular-nums}.pc{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--mu);margin-top:2px}.pc.up{color:#16a34a}.pc.dn{color:#dc2626}.dark .pc.up{color:#4ade80}.dark .pc.dn{color:#f87171}.ext{font-size:11px}
 .warn{color:#b45309;background:rgba(245,158,11,.1);font-size:14px}.dark .warn{color:#fbbf24}
 form.row .btn{flex:none;width:48px;padding:12px}
+.x.cal{color:var(--ac);opacity:.9}
